@@ -1,0 +1,28 @@
+# General
+.DS_Store
+*.log
+*.env
+.env
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Python
+.venv/
+venv/
+
+# Node / React
+node_modules/
+build/
+dist/
+
+# Dotnet
+bin/
+obj/
+
+# Mongo
+mongo-data/
+
+# Docker
+*.pid

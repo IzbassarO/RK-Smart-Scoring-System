@@ -1,0 +1,34 @@
+version: "3.9"
+services:
+  mlserver:
+    build: ./mlserver
+    ports:
+      - "5000:5000"
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  backend:
+    build: ./backend
+    ports:
+      - "8080:80"
+    environment:
+      - MONGO_CONN_STR=mongodb://mongo:27017
+      - MONGO_DB=creditdb
+      - MLSERVER_URL=http://mlserver:5000
+    depends_on:
+      - mlserver
+      - mongo
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./mongo-data:/data/db
