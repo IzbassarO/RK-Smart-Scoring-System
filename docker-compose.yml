@@ -1,4 +1,5 @@
 version: "3.9"
+
 services:
   mlserver:
     build: ./mlserver
@@ -18,6 +19,7 @@ services:
     depends_on:
       - mlserver
       - mongo
+      - postgres
 
   frontend:
     build: ./frontend
