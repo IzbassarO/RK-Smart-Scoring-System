@@ -23,6 +23,12 @@ builder.Services.AddCors(p => p.AddPolicy("AllowDev",
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddHttpClient("ml", c =>
+{
+    c.BaseAddress = new Uri(Environment.GetEnvironmentVariable("ML_BASE_URL") ?? "http://localhost:9000");
+    c.Timeout = TimeSpan.FromSeconds(5);
+});
+
 var app = builder.Build();
 app.UseCors("AllowDev");
 

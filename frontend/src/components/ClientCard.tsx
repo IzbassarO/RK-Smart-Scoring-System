@@ -1,10 +1,11 @@
 import type { Client } from "../types/Client";
 import "./ClientCard.css";
+import DecisionBox from "./DecisionBox";
 
 type Props = { client: Client };
 
 export default function ClientCard({ client }: Props) {
-  // Паддим SK_ID_CURR до 12 символов и маскируем первые 6
+  // Маскируем первые 6 цифр ID
   const maskSkId = (id: number) => {
     const s = String(id).padStart(12, "0");
     return s.replace(/^(\d{6})/, "******");
@@ -53,6 +54,11 @@ export default function ClientCard({ client }: Props) {
         <div><span>EXT_SOURCE_1:</span><b>{client.extSource1 ?? "—"}</b></div>
         <div><span>EXT_SOURCE_2:</span><b>{client.extSource2 ?? "—"}</b></div>
         <div><span>EXT_SOURCE_3:</span><b>{client.extSource3 ?? "—"}</b></div>
+      </div>
+
+      {/* ⬇️⬇️ Вот сюда вставляем DecisionBox */}
+      <div style={{ marginTop: "1rem" }}>
+        <DecisionBox iin={String(client.skIdCurr)} />
       </div>
     </section>
   );

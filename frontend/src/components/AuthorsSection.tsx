@@ -13,14 +13,14 @@ type Author = {
 
 const AUTHORS: Author[] = [
   {
-    name: "Асылбек Ғизатов",
+    name: "Assylbek Gizatov",
     role: "Научный руководитель",
-    bio: "Научный руководитель",
+    bio: "Старший Научный сотрудник Научно-Исследовательского Института Физики, Математики и прикладных технологии Атырауского университета имени Халела Досмухамедова",
     photo: "/authors/Assylbek.jpg",
     linkedin: "https://www.linkedin.com/in/assylbek-gizatov-039193284/"
   },
   {
-    name: "Ізбасар Орынбасар",
+    name: "Izbassar Orynbassar",
     role: "Full-Stack Developer",
     bio: "Магистрант 1 курса, разработка backend и frontend частей проекта.",
     photo: "/authors/Izbassar.jpg",
