@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using System.Net.Http.Json;
-using System.Text.Json;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -10,33 +9,22 @@ public class ScoreController : ControllerBase
 {
     private readonly IMongoCollection<BsonDocument> _col;
     private readonly IHttpClientFactory _http;
-    private static string[]? _expected;                // кеш списка фич
-    private static readonly Dictionary<string, Dictionary<string, int>> _catMaps = new(); // кеш кодировок строк
 
     public ScoreController(IMongoCollection<BsonDocument> col, IHttpClientFactory http)
     {
-        _col = col; _http = http;
+        _col = col;
+        _http = http;
     }
 
+    // POST /api/score/{iin}?creditAmount=123456
     [HttpPost("{iin}")]
     public async Task<IActionResult> ScoreByIin(string iin, [FromQuery] double? creditAmount)
     {
-        var ml = _http.CreateClient("ml");
-
-        // 1) Подтянуть список ожидаемых фич (кеш)
-        if (_expected == null)
-        {
-            var meta = await ml.GetFromJsonAsync<ModelFeatures>("/model/features");
-            _expected = meta?.expected_features ?? Array.Empty<string>();
-            if (_expected.Length == 0)
-                return StatusCode(503, new { message = "ML features unavailable" });
-        }
-
-        // 2) Достать клиента
         var cleaned = new string(iin.Where(char.IsDigit).ToArray());
         if (string.IsNullOrEmpty(cleaned) || !long.TryParse(cleaned, out var key))
-            return BadRequest(new { message = "Некорректный идентификатор" });
+            return BadRequest(new { message = "Некорректный ИИН." });
 
+        // 1) достаём клиента
         var f = Builders<BsonDocument>.Filter;
         var filter = f.Or(
             f.Eq("SK_ID_CURR", (int)key),
@@ -46,77 +34,78 @@ public class ScoreController : ControllerBase
         var doc = await _col.Find(filter).FirstOrDefaultAsync();
         if (doc is null) return NotFound(new { message = "Клиент не найден." });
 
-        // 3) BSON -> сырое Dictionary<string, object>
-        var raw = new Dictionary<string, object>();
-        foreach (var el in doc.Elements)
+        var ml = _http.CreateClient("ml");
+
+        // 2) запрашиваем список фич (совместим с /model/features)
+        List<string>? featuresList = null;
+        try
         {
-            if (el.Name is "_id" or "TARGET" or "SK_ID_CURR") continue; // выкидываем служебные
-            var v = el.Value;
-            if (v.IsNumeric) raw[el.Name] = v.ToDouble();
-            else if (v.IsBoolean) raw[el.Name] = v.ToBoolean() ? 1d : 0d;
-            else if (v.IsString) raw[el.Name] = v.AsString;
-            else raw[el.Name] = v.ToString() ?? "";
+            var meta = await ml.GetFromJsonAsync<FeaturesDto>("/model/features");
+            featuresList = meta?.features;
+        }
+        catch
+        {
+            // fallback на /features, если кто-то убрал alias
+            var meta = await ml.GetFromJsonAsync<FeaturesDto>("/features");
+            featuresList = meta?.features;
         }
 
-        // Если юзер ввёл сумму — перезапишем
-        if (creditAmount.HasValue) raw["AMT_CREDIT"] = creditAmount.Value;
+        if (featuresList is null || featuresList.Count == 0)
+            return StatusCode(503, new { message = "Сервис скоринга недоступен (нет списка фич)." });
 
-        // Производные (как в тренировке)
-        double GetD(string n) => raw.TryGetValue(n, out var o) && o is double d ? d : 0d;
-        double fam = GetD("CNT_FAM_MEMBERS"); if (fam <= 0) fam = 1;
-        raw["AMT_CREDIT_PER_PERSON"] = fam == 0 ? 0 : GetD("AMT_CREDIT") / fam;
-        raw["AMT_INCOME_TOTAL_PER_PERSON"] = fam == 0 ? 0 : GetD("AMT_INCOME_TOTAL") / fam;
-        raw["AMT_ANNUITY_PER_PERSON"] = fam == 0 ? 0 : GetD("AMT_ANNUITY") / fam;
-
-        // 4) Сборка payload РОВНО по списку expected_features
-        var feats = new Dictionary<string, object>(_expected.Length);
-        foreach (var name in _expected)
+        // 3) строим словарь значений (string->double) по именам фич
+        var payloadFeatures = new Dictionary<string, object>(featuresList.Count);
+        foreach (var name in featuresList)
         {
-            if (!raw.TryGetValue(name, out var val) || val is null)
+            // ищем поле (регистр учитываем как в исходном датасете)
+            if (doc.TryGetValue(name, out var val) && !val.IsBsonNull)
             {
-                feats[name] = null!;
-                continue;
+                payloadFeatures[name] = TryToDouble(val);
             }
-
-            switch (val)
+            else
             {
-                case double d: feats[name] = d; break;
-                case int i: feats[name] = (double)i; break;
-                case long l: feats[name] = (double)l; break;
-                case bool b: feats[name] = b ? 1d : 0d; break;
-                case string s:
-                    // Временная ordinal-кодировка строк (если в pkl нет энкодера)
-                    // Стабильная в рамках процесса (кеш в _catMaps)
-                    var map = _catMaps.GetValueOrDefault(name);
-                    if (map is null)
-                    {
-                        map = new Dictionary<string, int>(StringComparer.Ordinal);
-                        _catMaps[name] = map;
-                    }
-                    if (!map.TryGetValue(s, out var code))
-                    {
-                        code = map.Count + 1; // 1..N, 0 зарезервируем под MISSING
-                        map[s] = code;
-                    }
-                    feats[name] = (double)code;
-                    break;
-                default:
-                    feats[name] = null!;
-                    break;
+                payloadFeatures[name] = 0.0; // дефолт
             }
         }
 
-        var payload = new { features = feats };
-        var resp = await ml.PostAsJsonAsync("/predict", payload);
+        // 4) формируем тело запроса к ML
+        var body = new PredictIn
+        {
+            features = payloadFeatures,
+            creditAmount = creditAmount
+        };
+
+        // 5) запрашиваем ML
+        var resp = await ml.PostAsJsonAsync("/predict", body);
         if (!resp.IsSuccessStatusCode)
         {
-            var err = await resp.Content.ReadAsStringAsync();
-            return StatusCode((int)resp.StatusCode, new { message = "ML error", detail = err });
+            var text = await resp.Content.ReadAsStringAsync();
+            return StatusCode(503, new { message = "Сервис скоринга недоступен.", detail = text });
         }
-        var data = await resp.Content.ReadFromJsonAsync<ScoreResult>();
-        return Ok(data);
+
+        var result = await resp.Content.ReadFromJsonAsync<PredictOut>();
+        return Ok(result);
     }
 
-    private class ModelFeatures { public string[]? expected_features { get; set; } }
-    private class ScoreResult { public double probability { get; set; } public string decision { get; set; } = ""; public double threshold { get; set; } }
+    private static double TryToDouble(BsonValue v)
+    {
+        // максимально лояльная конвертация
+        return v.IsInt32 ? v.AsInt32 :
+               v.IsInt64 ? v.AsInt64 :
+               v.IsDouble ? v.AsDouble :
+               v.IsString && double.TryParse(v.AsString, out var d) ? d : 0.0;
+    }
+
+    private class FeaturesDto { public List<string> features { get; set; } = new(); }
+    private class PredictIn
+    {
+        public Dictionary<string, object> features { get; set; } = new();
+        public double? creditAmount { get; set; }
+    }
+    private class PredictOut
+    {
+        public double probability { get; set; }
+        public string decision { get; set; } = "";
+        public double threshold { get; set; }
+    }
 }

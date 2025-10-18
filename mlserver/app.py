@@ -1,93 +1,66 @@
 # app.py
-import os, json, pickle
-from typing import Dict, Any, List
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-import numpy as np
-import pandas as pd
+from typing import Optional, Dict, Any
+import os
+from pathlib import Path
+import joblib, numpy as np, uvicorn
 
-MODEL_PATH = os.getenv("MODEL_PATH", "models/safe_lgb_model.pkl")
-DECISION_THRESHOLD = float(os.getenv("DECISION_THRESHOLD", "0.70"))
-FEATURES_PATH = os.getenv("FEATURES_PATH", "models/expected_features.json")
+BASE_DIR = Path(__file__).resolve().parent
+MODELS_DIR = BASE_DIR / "models"
+MODEL_PATH = Path(os.getenv("MODEL_PATH", MODELS_DIR / "last_model.pkl")).resolve()
+FEATS_PATH = Path(os.getenv("FEATS_PATH", MODELS_DIR / "last_features.pkl")).resolve()
 
-# === Загрузка модели ===
-try:
-    with open(MODEL_PATH, "rb") as f:
-        PIPELINE = pickle.load(f)
-except Exception as e:
-    raise RuntimeError(f"Не удалось загрузить модель из {MODEL_PATH}: {e}")
+if not MODEL_PATH.exists(): raise RuntimeError(f"Модель не найдена: {MODEL_PATH}")
+if not FEATS_PATH.exists(): raise RuntimeError(f"Список фич не найден: {FEATS_PATH}")
 
-# === Определяем EXPECTED_FEATURES ===
-EXPECTED_FEATURES: List[str] = []
-# 1) если есть сохранённый json — используем его
-if os.path.exists(FEATURES_PATH):
-    with open(FEATURES_PATH, "r", encoding="utf-8") as f:
-        EXPECTED_FEATURES = json.load(f)
+model = joblib.load(MODEL_PATH)
+feature_names = joblib.load(FEATS_PATH)
+THRESHOLD = 0.65
 
-# 2) иначе — пробуем вытащить из самой модели (LGBMClassifier -> booster_.feature_name())
-if not EXPECTED_FEATURES:
-    booster = getattr(PIPELINE, "booster_", None)
-    if booster is not None and hasattr(booster, "feature_name"):
-        EXPECTED_FEATURES = list(booster.feature_name())
+app = FastAPI(title="RK Smart Scoring ML API")
 
-# 3) на худой конец — аварийный фоллбэк (но лучше до этого не доводить)
-if not EXPECTED_FEATURES:
-    raise RuntimeError("Не удалось определить список признаков: сохраните models/expected_features.json или используйте LGBMClassifier.booster_.feature_name().")
-
-app = FastAPI(title="Credit Scoring Inference", version="1.0.1")
-
-class ScoreRequest(BaseModel):
+class PredictIn(BaseModel):
     features: Dict[str, Any]
+    creditAmount: Optional[float] = None  # ← принимаем сумму (по желанию)
 
-class ScoreResponse(BaseModel):
+class PredictOut(BaseModel):
     probability: float
     decision: str
     threshold: float
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "threshold": DECISION_THRESHOLD}
+    return {"status": "ok", "model": str(MODEL_PATH), "features": str(FEATS_PATH), "count": len(feature_names)}
 
+# Официальный эндпоинт
+@app.get("/features")
+def get_features():
+    return {"features": feature_names, "count": len(feature_names)}
+
+# Совместимость со старым кодом (.NET дергает /model/features)
 @app.get("/model/features")
-def model_features():
-    return {"expected_features": EXPECTED_FEATURES}
+def get_features_compat():
+    return {"features": feature_names, "count": len(feature_names)}
 
-@app.post("/predict", response_model=ScoreResponse)
-def predict(req: ScoreRequest):
-    # Собираем ряд РОВНО в порядке EXPECTED_FEATURES
-    row = [req.features.get(f, None) for f in EXPECTED_FEATURES]
-    # В DataFrame с именами колонок — так пропадёт warning про feature names
-    X = pd.DataFrame([row], columns=EXPECTED_FEATURES)
-    # None -> NaN
-    X = X.replace({None: np.nan})
+@app.post("/predict", response_model=PredictOut)
+def predict(payload: PredictIn):
+    # Если передали creditAmount — положим в один из «стандартных» ключей, если он есть среди feature_names.
+    if payload.creditAmount is not None:
+        for key in ("AMT_CREDIT", "CREDIT_AMOUNT", "credit_amount"):
+            if key in feature_names:
+                payload.features[key] = payload.creditAmount
+                break  # нашли подходящий — хватит
 
     try:
-        proba = float(PIPELINE.predict_proba(X)[0][1])
+        row = [float(payload.features.get(name, 0.0)) for name in feature_names]
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Prediction error: {e}")
+        raise HTTPException(status_code=400, detail=f"Bad feature value: {e}")
 
-    decision = "approve" if proba >= DECISION_THRESHOLD else "decline"
-    return ScoreResponse(probability=proba, decision=decision, threshold=DECISION_THRESHOLD)
+    X = np.asarray(row, dtype=float).reshape(1, -1)
+    proba = float(model.predict_proba(X)[:, 1])
+    decision = "approve" if proba >= THRESHOLD else "decline"
+    return {"probability": proba, "decision": decision, "threshold": THRESHOLD}
 
-EXPECTED_FEATURES = []
-
-# 1) пробуем достать из модели
-def feature_names_from_model(m):
-    b = getattr(m, "booster_", None)
-    if b is not None and hasattr(b, "feature_name"):
-        return list(b.feature_name())
-    try:
-        b = m.named_steps["model"].booster_
-        return list(b.feature_name())
-    except Exception:
-        return []
-
-EXPECTED_FEATURES = feature_names_from_model(PIPELINE)
-
-# 2) если не нашли в модели — берем из файла
-if not EXPECTED_FEATURES and os.path.exists(FEATURES_PATH):
-    with open(FEATURES_PATH, "r", encoding="utf-8") as f:
-        EXPECTED_FEATURES = json.load(f)
-
-if not EXPECTED_FEATURES:
-    raise RuntimeError("Не удалось определить список признаков (ни в модели, ни в json).")
+if __name__ == "__main__":
+    uvicorn.run("app:app", host="0.0.0.0", port=9000, reload=True)

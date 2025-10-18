@@ -55,7 +55,8 @@ export default function AppLayout() {
       setError(null);
       setScoreLoading(true);
       // ВАЖНО: игнорируем amount по твоему требованию
-      const s = await scoreByIin(lastIin);
+      const parsed = amount ? Number(amount) : undefined;
+      const s = await scoreByIin(lastIin, parsed);
       setScore({ decision: s.decision, probability: s.probability });
     } catch {
       setError("Сервис скоринга временно недоступен. Попробуйте позже.");
