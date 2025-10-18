@@ -16,13 +16,20 @@ if not FEATS_PATH.exists(): raise RuntimeError(f"Список фич не най
 
 model = joblib.load(MODEL_PATH)
 feature_names = joblib.load(FEATS_PATH)
-THRESHOLD = 0.65
+
+# --- ВАЖНО: управление трактовкой вероятности ---
+# PROBA_KIND = 'approval'  → proba = вероятность одобрения
+# PROBA_KIND = 'default'   → proba = вероятность дефолта (PD)
+PROBA_KIND = os.getenv("PROBA_KIND", "approval").lower()  # 'approval' или 'default'
+THRESHOLD = float(os.getenv("THRESHOLD", "0.65"))         # порог для ОДОБРЕНИЯ
+# Если это PD, внутренний порог на PD = 1 - THRESHOLD (пример: 0.65 → PD-cut 0.35)
+PD_CUT = 1.0 - THRESHOLD
 
 app = FastAPI(title="RK Smart Scoring ML API")
 
 class PredictIn(BaseModel):
     features: Dict[str, Any]
-    creditAmount: Optional[float] = None  # ← принимаем сумму (по желанию)
+    creditAmount: Optional[float] = None
 
 class PredictOut(BaseModel):
     probability: float
@@ -31,26 +38,33 @@ class PredictOut(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "model": str(MODEL_PATH), "features": str(FEATS_PATH), "count": len(feature_names)}
+    return {
+        "status": "ok",
+        "model": str(MODEL_PATH),
+        "features": str(FEATS_PATH),
+        "count": len(feature_names),
+        "proba_kind": PROBA_KIND,
+        "threshold": THRESHOLD,
+        "pd_cut": PD_CUT if PROBA_KIND == "default" else None,
+        "cwd": str(Path.cwd()),
+    }
 
-# Официальный эндпоинт
 @app.get("/features")
 def get_features():
     return {"features": feature_names, "count": len(feature_names)}
 
-# Совместимость со старым кодом (.NET дергает /model/features)
 @app.get("/model/features")
 def get_features_compat():
     return {"features": feature_names, "count": len(feature_names)}
 
 @app.post("/predict", response_model=PredictOut)
 def predict(payload: PredictIn):
-    # Если передали creditAmount — положим в один из «стандартных» ключей, если он есть среди feature_names.
+    # подставим кредитную сумму, если дали и есть подходящее имя
     if payload.creditAmount is not None:
         for key in ("AMT_CREDIT", "CREDIT_AMOUNT", "credit_amount"):
             if key in feature_names:
                 payload.features[key] = payload.creditAmount
-                break  # нашли подходящий — хватит
+                break
 
     try:
         row = [float(payload.features.get(name, 0.0)) for name in feature_names]
@@ -59,8 +73,17 @@ def predict(payload: PredictIn):
 
     X = np.asarray(row, dtype=float).reshape(1, -1)
     proba = float(model.predict_proba(X)[:, 1])
-    decision = "approve" if proba >= THRESHOLD else "decline"
-    return {"probability": proba, "decision": decision, "threshold": THRESHOLD}
+
+    if PROBA_KIND == "approval":
+        # вероятность одобрения
+        decision = "approve" if proba >= THRESHOLD else "decline"
+        threshold_out = THRESHOLD
+    else:
+        # вероятность дефолта (PD)
+        decision = "approve" if proba <= PD_CUT else "decline"
+        threshold_out = THRESHOLD  # наружу отдаём твой порог одобрения
+
+    return {"probability": proba, "decision": decision, "threshold": threshold_out}
 
 if __name__ == "__main__":
     uvicorn.run("app:app", host="0.0.0.0", port=9000, reload=True)
