@@ -1,28 +1,30 @@
 import {
   ChatBubbleBottomCenterTextIcon,
+  ShieldCheckIcon,
+  ChartBarSquareIcon,
 } from "@heroicons/react/24/solid";
 
 export const featuresData = [
   {
-    color: "gray",
-    title: "Awarded Agency",
-    icon: ChatBubbleBottomCenterTextIcon,
+    color: "blue",
+    title: "AI-Powered Credit Scoring",
+    icon: ChartBarSquareIcon,
     description:
-      "Divide details about your product or agency work into parts. A paragraph describing a feature will be enough.",
+      "Our advanced machine learning models analyze hundreds of data points in seconds — delivering accurate, transparent, and fair credit decisions.",
   },
   {
-    color: "gray",
-    title: "Free Revisions",
-    icon: ChatBubbleBottomCenterTextIcon,
+    color: "indigo",
+    title: "Secure & Compliant Infrastructure",
+    icon: ShieldCheckIcon,
     description:
-      "Keep you user engaged by providing meaningful information. Remember that by this time, the user is curious.",
+      "Built with enterprise-grade encryption and full compliance with financial regulations to ensure safety and trust in every transaction.",
   },
   {
-    color: "gray",
-    title: "Verified Company",
+    color: "cyan",
+    title: "Instant Decisions, Real Insights",
     icon: ChatBubbleBottomCenterTextIcon,
     description:
-      "Write a few lines about each one. A paragraph describing a feature will be enough. Keep you user engaged!",
+      "Get real-time approval insights with explainable AI. Make smarter lending choices that balance growth with responsible risk management.",
   },
 ];
 

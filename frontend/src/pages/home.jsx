@@ -35,12 +35,10 @@ export function Home() {
                 color="white"
                 className="mb-6 font-black"
               >
-                Your story starts with us.
+                Empowering Smarter Credit Decisions.
               </Typography>
               <Typography variant="lead" color="white" className="opacity-80">
-                This is a simple example of a Landing Page you can build using
-                Material Tailwind. It features multiple components based on
-                Tailwind CSS and Material Design by Google.
+                Analyze, predict, and approve with confidence. Our AI-driven scoring system helps you make better lending decisions in seconds.
               </Typography>
             </div>
           </div>
@@ -73,30 +71,34 @@ export function Home() {
       {/* --- Секция авторов --- */}
       <section className="px-4 pt-20 pb-48">
         <div className="container mx-auto">
-          <PageTitle section="Our Team" heading="Authors">
-            Team of Atyrau University
+          <PageTitle section="" heading="Authors">
+            {/* можно добавить короткое описание команды здесь */}
           </PageTitle>
-          <div className="mt-24 grid grid-cols-1 gap-12 gap-x-24 md:grid-cols-2 xl:grid-cols-4">
+
+          {/* 1 → 2 → 3 колонки; растягиваем карточки по высоте */}
+          <div className="mt-16 grid items-stretch grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-3">
             {teamData.map(({ img, name, position, socials }) => (
-              <TeamCard
-                key={name}
-                img={img}
-                name={name}
-                position={position}
-                socials={
-                  <div className="flex items-center gap-2">
-                    {socials.map(({ color, name }) => (
-                      <IconButton key={name} color={color} variant="text">
-                        <i className={`fa-brands text-xl fa-${name}`} />
-                      </IconButton>
-                    ))}
-                  </div>
-                }
-              />
+              <div key={name || img} className="h-full">
+                <TeamCard
+                  img={img}
+                  name={name || "Team Member"}
+                  position={position}
+                  socials={
+                    <div className="flex items-center gap-2">
+                      {socials.map(({ color, name }) => (
+                        <IconButton key={name} color={color} variant="text">
+                          <i className={`fa-brands text-xl fa-${name}`} />
+                        </IconButton>
+                      ))}
+                    </div>
+                  }
+                />
+              </div>
             ))}
           </div>
         </div>
       </section>
+      <Footer />
     </>
   );
 }

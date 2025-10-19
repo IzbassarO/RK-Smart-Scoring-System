@@ -106,7 +106,7 @@ export default function SearchAndScore() {
       <Card className="mx-auto max-w-3xl rounded-xl shadow-lg shadow-gray-500/10">
         <CardBody>
           <Typography variant="h4" color="blue-gray" className="mb-4 font-bold">
-            Поиск клиента по ИИН
+            Search for a client by IIN
           </Typography>
 
           {/* Поиск по ИИН */}
@@ -128,7 +128,7 @@ export default function SearchAndScore() {
           {foundIIN && !loadingClient && (
             <div className="mt-6 space-y-4">
               <Typography variant="small" className="text-blue-gray-600">
-                Клиент найден: <span className="font-semibold">{foundIIN}</span>
+                Client found: <span className="font-semibold">{foundIIN}</span>
               </Typography>
 
               {/* В одной линии: textfield суммы и кнопка проверки */}
@@ -139,7 +139,7 @@ export default function SearchAndScore() {
                   </span>
                   <Input
                     type="text"
-                    label="Сумма кредита (необязательно)"
+                    label="Amount of credit (optional)"
                     value={amount}
                     onChange={(e) =>
                       setAmount(e.target.value.replace(/[^\d]/g, ""))
@@ -147,10 +147,10 @@ export default function SearchAndScore() {
                     className="pl-7"
                   />
                 </div>
-
+                
                 {/* Кнопка НЕ зависит от заполненности суммы */}
                 <Button color="blue" onClick={handleScore} disabled={scoring}>
-                  {scoring ? "Проверяем…" : "Проверить кредитоспособность"}
+                  {scoring ? "Checking" : "Check Credit Score"}
                 </Button>
               </div>
 
