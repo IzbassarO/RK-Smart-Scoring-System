@@ -39,3 +39,49 @@ curl -X POST http://localhost:9000/predict \
       "AMT_ANNUITY_PER_PERSON": 42500
     }
   }'
+
+<div align="center">
+
+# 🧠 SmartScoring KZ  
+### Intelligent Credit Scoring System powered by AI
+
+*Modern full-stack platform for real-time creditworthiness evaluation using machine learning.*
+
+</div>
+
+---
+
+## 📘 Overview
+
+**SmartScoring KZ** is an end-to-end credit scoring system that combines  
+AI-driven analytics, a .NET backend, and a FastAPI microservice for ML predictions.
+
+It enables financial institutions to evaluate clients’ creditworthiness  
+instantly, securely, and transparently.
+
+---
+
+## 🚀 Key Features
+
+- 🔍 **Client Search by IIN** — instantly retrieve client profiles from MongoDB.  
+- 🤖 **AI-Powered Scoring** — LightGBM model hosted in a FastAPI ML microservice.  
+- 🧮 **Explainable Predictions** — interpretable results and decision probabilities.  
+- ⚙️ **RESTful Architecture** — clean separation between frontend, backend, and ML.  
+- 📊 **Swagger Documentation** — interactive API docs built into the backend.  
+- 🐳 **Dockerized Infrastructure** — deploy all services with a single command.  
+
+---
+
+## 🏗️ System Architecture
+
+```text
+[ React + Tailwind + MaterialTailwind ]
+                │
+                ▼
+   [ ASP.NET Core 8 Web API (C#) ]
+                │
+                ▼
+     [ FastAPI (ML microservice) ]
+                │
+                ▼
+             [ MongoDB ]

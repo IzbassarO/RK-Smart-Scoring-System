@@ -40,7 +40,7 @@ export default function SearchAndScore() {
     } catch (e) {
       setClient(null);
       setOpen(false);
-      setError("Клиент не найден в базе.");
+      setError("Client ID is not found in the database.");
       console.warn(e);
     } finally {
       setLoadingClient(false);
@@ -94,7 +94,7 @@ export default function SearchAndScore() {
         },
       });
     } catch (e) {
-      setError("Сервис скоринга недоступен. Попробуйте позже.");
+      setError("Scoring system is not available. Try later.");
       console.error(e);
     } finally {
       setScoring(false);
@@ -147,7 +147,7 @@ export default function SearchAndScore() {
                     className="pl-7"
                   />
                 </div>
-                
+
                 {/* Кнопка НЕ зависит от заполненности суммы */}
                 <Button color="blue" onClick={handleScore} disabled={scoring}>
                   {scoring ? "Checking" : "Check Credit Score"}
@@ -158,14 +158,14 @@ export default function SearchAndScore() {
               {decision && (
                 <div className="mt-2 flex items-center gap-3">
                   <Chip
-                    value={decision.approved ? "Одобрено" : "Отказано"}
+                    value={decision.approved ? "Approved" : "Rejected"}
                     color={decision.approved ? "green" : "red"}
                     className="font-medium"
                   />
                   <div className="text-sm text-blue-gray-700">
-                    Вероятность: <b>{fmtPct(decision.details.probability)}</b>
+                    Probability: <b>{fmtPct(decision.details.probability)}</b>
                     {" · "}
-                    Порог: <b>{fmtPct(decision.details.threshold)}</b>
+                    Threshold: <b>{fmtPct(decision.details.threshold)}</b>
                   </div>
                 </div>
               )}
@@ -178,9 +178,9 @@ export default function SearchAndScore() {
       <Dialog open={open} handler={handleClose} size="lg" className="max-w-3xl">
         <DialogHeader className="justify-between">
           <Typography variant="h5" color="blue-gray">
-            Данные клиента
+            Client Information
           </Typography>
-          <IconButton variant="text" onClick={handleClose} aria-label="Закрыть">
+          <IconButton variant="text" onClick={handleClose} aria-label="Close">
             <XMarkIcon className="h-6 w-6" />
           </IconButton>
         </DialogHeader>
@@ -188,19 +188,19 @@ export default function SearchAndScore() {
           {client ? (
             <>
               <InfoRow label="SK_ID_CURR" value={client.skIdCurr} />
-              <InfoRow label="Возраст" value={client.age} />
-              <InfoRow label="Пол" value={client.gender} />
+              <InfoRow label="Age" value={client.age} />
+              <InfoRow label="Gender" value={client.gender} />
               <InfoRow label="Семейный статус" value={client.familyStatus} />
-              <InfoRow label="Жильё" value={client.housingType} />
-              <InfoRow label="Занятость" value={client.employment} />
-              <InfoRow label="Образование" value={client.education} />
-              <InfoRow label="Профессия" value={client.occupation} />
-              <InfoRow label="Дети" value={client.children} />
-              <InfoRow label="Члены семьи" value={client.familyMembers} />
-              <InfoRow label="Годовой доход" value={client.incomeAnnual} />
-              <InfoRow label="Кредит (заявка/текущий)" value={client.creditAmount} />
-              <InfoRow label="Аннуитет" value={client.annuity} />
-              <InfoRow label="Цена товара" value={client.goodsPrice} />
+              <InfoRow label="Appartment" value={client.housingType} />
+              <InfoRow label="Employment" value={client.employment} />
+              <InfoRow label="Education" value={client.education} />
+              <InfoRow label="Occupation" value={client.occupation} />
+              <InfoRow label="Children" value={client.children} />
+              <InfoRow label="Family members" value={client.familyMembers} />
+              <InfoRow label="Annual income" value={client.incomeAnnual} />
+              <InfoRow label="Credit amount (current)" value={client.creditAmount} />
+              <InfoRow label="Annuity" value={client.annuity} />
+              <InfoRow label="Goods price" value={client.goodsPrice} />
               <InfoRow label="EXT_SOURCE_1" value={client.extSource1} />
               <InfoRow label="EXT_SOURCE_2" value={client.extSource2} />
               <InfoRow label="EXT_SOURCE_3" value={client.extSource3} />
@@ -208,12 +208,12 @@ export default function SearchAndScore() {
               <InfoRow label="REGION_RATING_CLIENT_W_CITY" value={client.regionRatingClientWCity} />
             </>
           ) : (
-            <Typography>Загрузка…</Typography>
+            <Typography>Loading...</Typography>
           )}
         </DialogBody>
         <DialogFooter>
           <Button variant="text" color="blue-gray" onClick={handleClose} className="mr-2">
-            Закрыть
+            Close
           </Button>
         </DialogFooter>
       </Dialog>

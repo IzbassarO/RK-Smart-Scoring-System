@@ -19,6 +19,10 @@ import { FeatureCard, TeamCard } from "@/widgets/cards";
 import { featuresData, teamData } from "@/data";
 import SearchIIN from "@/widgets/SearchIIN";
 import SearchAndScore from "@/widgets/SearchAndScore";
+import Faq from "@/widgets/Faq";
+import ProjectOverview from "@/widgets/ProjectOverview";
+import Organizers from "@/widgets/Organizers";
+import Partners from "@/widgets/Partners";
 
 export function Home() {
   return (
@@ -46,7 +50,7 @@ export function Home() {
       </div>
 
       {/* --- Секция с поиском --- */}
-      <section className="-mt-32 bg-white px-4 pb-20 pt-4">
+      <section className="-mt-60 bg-white px-4 pb-20 pt-4 shadow-xl shadow-gray-400/20 rounded-t-3xl">
         <div className="container mx-auto">
           {/* блок карточек features */}
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -68,36 +72,53 @@ export function Home() {
         </div>
       </section>
 
-      {/* --- Секция авторов --- */}
-      <section className="px-4 pt-20 pb-48">
-        <div className="container mx-auto">
-          <PageTitle section="" heading="Authors">
-            {/* можно добавить короткое описание команды здесь */}
-          </PageTitle>
+      <ProjectOverview />
+      
+      <Organizers />
 
-          {/* 1 → 2 → 3 колонки; растягиваем карточки по высоте */}
-          <div className="mt-16 grid items-stretch grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-3">
-            {teamData.map(({ img, name, position, socials }) => (
-              <div key={name || img} className="h-full">
-                <TeamCard
-                  img={img}
-                  name={name || "Team Member"}
-                  position={position}
-                  socials={
-                    <div className="flex items-center gap-2">
-                      {socials.map(({ color, name }) => (
-                        <IconButton key={name} color={color} variant="text">
-                          <i className={`fa-brands text-xl fa-${name}`} />
+      {/* --- Секция авторов --- */}
+      <section className="relative w-full bg-gray-50 pt-20 pb-32">
+        {/* верхняя линия */}
+        <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
+        
+        <div className="container mx-auto px-4">
+          <PageTitle section="" heading="Authors">
+            <p className="text-blue-gray-600 text-center mt-2">
+              Meet the core team behind the Intelligent Credit Scoring System project.
+              </p>
+          </PageTitle>
+        {/* карточки авторов */}
+        <div className="mt-16 grid items-stretch grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-3">
+          {teamData.map(({ img, name, position, socials }) => (
+            <div key={name || img} className="h-full">
+              <TeamCard
+              img={img}
+              name={name || "Team Member"}
+              position={position}
+              socials={
+              <div className="flex items-center justify-center gap-2">
+                  {socials.map(({ color, name }) => (
+                      <IconButton key={name} color={color} variant="text">
+                        <i className={`fa-brands text-xl fa-${name}`} />
                         </IconButton>
-                      ))}
-                    </div>
-                  }
-                />
+                  ))}
               </div>
-            ))}
+              }
+              />
+            </div>
+          ))}
           </div>
-        </div>
-      </section>
+          </div>
+
+  {/* нижняя линия */}
+  <div className="absolute bottom-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
+</section>
+
+      {/* --- Partners --- */}
+      <Partners />
+      
+      <Faq />
+      
       <Footer />
     </>
   );
